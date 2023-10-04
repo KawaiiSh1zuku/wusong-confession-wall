@@ -93,10 +93,10 @@ export class Assistant extends plugin {
   
   /** 发墙 */
   async ConfessionSay(e) {
-    e.con = e.msg.replace(/#|(发墙|发表白墙|表白|墙)/g, '').trim()
+    e.con = e.msg.replace(/#|(发墙|发表白墙)/g, '').trim()
 	
 	this.setContext('_isAnonymous')
-	e.reply('✳️ 知道啦，要不要匿名呐（实名会带上昵称和QQ号的前后两位）？发送：\n' + '------“匿名”或“实名”------')
+	e.reply('✳️ 知道啦，要不要匿名呐（实名会带上昵称和QQ号的前后两位）？发送：\n' + '------“匿名”或“实名”------\n' + "发送其他可以取消本次投稿")
   }
   
   async _isAnonymous(e) {
@@ -116,8 +116,8 @@ export class Assistant extends plugin {
 	  con = "来自: " + "[" + maskedNumber + "] " + e.sender.nickname + "\n" + e.con + "\n"
     } else {
       this.setContext('_isAnonymous')
-      this.e.reply('❎ 请输入:“匿名”或“实名”')
-      return false
+      this.e.reply('取消本次投稿')
+      return true
     }
 	
 	let result = await new QQApi(e).setQzone(con, e.img)
